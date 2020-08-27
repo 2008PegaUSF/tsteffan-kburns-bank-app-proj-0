@@ -1,0 +1,312 @@
+package bank;
+
+import java.io.EOFException;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.ArrayList;
+import java.util.Random;
+import java.util.Scanner;
+
+public class BankLib { 
+	/*TODO: Ask about how to implement Serializable. May have to move
+	 * the read/write methods to special class.
+	 */
+	
+	ArrayList<BankAccounts> bankList = new ArrayList<BankAccounts>();
+	ArrayList<Applications> applist = new ArrayList<Applications>();
+	
+	/*
+	 * This method generates PINs and confirms that they are unique.
+	 */
+	public static int pinGenerator() {
+	ArrayList<Integer> pins = new ArrayList<Integer>(); //logs all PINs
+	Random rand = new Random();
+	int minimum = 1000;
+	int randRange = 9999 - minimum + 1;
+	int pinGenErrCount = 0;
+	int generatedPIN = 0;
+		while (pinGenErrCount == 0) { //This loop ensures unique PINs.
+		generatedPIN = rand.nextInt(randRange) + minimum; 		
+				if (pins.contains(generatedPIN) == false) {
+					pinGenErrCount++;
+
+				}
+			}
+		return generatedPIN;
+		}
+	
+	/*This method saves the array list holding ALL bank customers (customer objects) 
+	 * back to the userlogin.txt file in the package.
+	 */
+	public static void saveCustomerToFile(ArrayList<Customer> masterCustList) {
+		try {
+			FileOutputStream fileOut = new FileOutputStream("userlogin.txt");
+			ObjectOutputStream out = new ObjectOutputStream(fileOut);
+			out.writeObject(masterCustList);
+			out.close();
+		} catch (FileNotFoundException fnfe) {
+			System.out.println("FileNotFoundException: " + fnfe);
+		} catch (IOException ioe) {
+			System.out.println("IOException: " + ioe);
+			ioe.printStackTrace();
+		}
+	}
+	
+	/*This method pulls the masterCustList array list from userlogin.txt
+	 * in order for the data to be used by the program.
+	 */
+	public static ArrayList<Customer> readCustomersFromFile() {
+		ArrayList<Customer> masterCustList = new ArrayList<Customer>();
+		String userName = "admin";
+		String password = "admin";
+		String firstName = "Mister";
+		String lastName = "Admin";
+		
+		try
+        {    
+            FileInputStream file = new FileInputStream("userlogin.txt"); 
+            ObjectInputStream in = new ObjectInputStream(file); 
+            masterCustList = (ArrayList<Customer>) in.readObject();      
+            in.close(); 
+            file.close();
+            return masterCustList;
+
+        } catch (ClassNotFoundException cnfe) {
+			System.out.println("Invalid username or password. Please try again.");
+        	cnfe.printStackTrace();
+        	return masterCustList;
+        } catch (EOFException eofe) {
+        	Customer customer = new Customer(userName, password, firstName, lastName);
+        	masterCustList.add(customer);
+        	saveCustomerToFile(masterCustList);
+        	Prompts.initialPrompt();
+        	return masterCustList;
+        } catch (IOException ioe) {
+			System.out.println("IOException: " + ioe);
+		return masterCustList; 
+        }
+	}
+	
+	/*This method reads the master customer list and checks against it to ensure
+	 * a unique user name. If user name is not unique, it prompts user and re-runs the
+	 * check.
+	 */
+	public static void usernameUniqueCheck(String userName) {
+		ArrayList<Customer> masterCustList = readCustomersFromFile();
+		Scanner userReader = new Scanner(System.in);
+		int userNameErrChk = 0;
+		while (userNameErrChk > 4) {
+			for (Customer customer : masterCustList)
+		    if(userName == customer.getUserName()) {
+		        System.out.println("Username is taken. Please pick another one.");
+		        userName = userReader.next();
+		        userNameErrChk++;
+		    } else {
+		    	return;
+		    }
+		}
+	}
+	
+	/*This method will read the username and password to the master customer list
+	 * and look for matches. If it matches, it will return that object index.
+	 */
+	
+	public static void login(String userName, String password) {
+		ArrayList<Customer> masterCustList;
+		masterCustList = readCustomersFromFile();
+		for (Customer customer : masterCustList) {
+			if ((userName == customer.getUserName()) && (password == customer.getPassword())) {
+				Prompts.accountMenuPrompt(customer);
+			} else {
+				System.out.println("That user does not exist. Goodbye.");
+				System.exit(0);
+			}
+		}
+	}
+	
+	public static BankAccounts pinAllocation(int PIN) {
+		ArrayList<BankAccounts> bankList = readBankAccountFromFile();
+		int pinErrChk = 0;
+		while (pinErrChk < 4) {
+			for (BankAccounts bankaccount : bankList) {
+				if (PIN == bankaccount.getPIN()) {
+					BankAccounts currentAccount = bankaccount;
+					pinErrChk = 4;
+					return currentAccount;
+				}
+				System.out.println("This PIN is incorrect, please input another.");
+				pinErrChk++;
+			}
+		}
+		return null;
+	}
+	
+	/*This method generates a new appID number and store the Application to the appList,
+	 * serializing it for memory storage.
+	 */
+	public static void applyForNewAccount(Customer customer) {
+		Random rand = new Random();
+		int minimum = 1000;
+		int randRange = 9999 - minimum + 1;
+		int appID = rand.nextInt(randRange) + minimum;
+		Applications application = new Applications(false, customer.getUserName(), appID);
+		ArrayList<Applications> appList = new ArrayList<Applications>();
+		appList.add(application);
+		
+		try {
+			FileOutputStream fileOut = new FileOutputStream("applications.txt");
+			ObjectOutputStream out = new ObjectOutputStream(fileOut);
+			out.writeObject(appList);
+			out.close();
+		} catch (FileNotFoundException fnfe) {
+			System.out.println("FileNotFoundException: " + fnfe);
+		} catch (EOFException eofe) {
+			
+		} catch (IOException ioe) {
+			System.out.println("IOException: " + ioe);
+			ioe.printStackTrace();
+		}
+		
+	}
+	
+	/*This is an Admin-only app that allows the admin to both read all submitted applications
+	 * and then approve of selected ones from the list.
+	 */
+	public void readAllApplications() {
+		ArrayList<Applications> appList = readApplicationsFromFile();
+		Scanner appScan = new Scanner(System.in);
+		for (Applications application : appList) {
+			System.out.println("Applicant: " + application.getApplicant() + " Approved : " + application.getApproved());
+		}
+		System.out.println();
+		System.out.println("Please enter the ID Number of the application you would like to approve.");
+		int appID = appScan.nextInt();
+		int appErrCheck = 0;
+		boolean continueChoice = false;
+		while (appErrCheck == 0) {
+			for (Applications application : appList) {
+				if (appID == application.getAppID()) {
+					application.setApproved(true);
+					createNewAccount(retrieveCustomer(application.getApplicant()));
+					System.out.println("Do you wish to continue approvals? (Y/N)");
+						if(appScan.next() == "Y") {
+							continueChoice = true;
+						} else {
+							appErrCheck++;
+					}
+				} else {
+					System.out.println("There is no such application.");
+					return;
+				}
+			}
+		}
+		return;
+	}
+	
+	public static ArrayList<Applications> readApplicationsFromFile() {
+		ArrayList<Applications> appList = new ArrayList<Applications>();
+		try
+        {    
+            FileInputStream file = new FileInputStream("applications.txt"); 
+            ObjectInputStream in = new ObjectInputStream(file); 
+            appList = (ArrayList<Applications>) in.readObject();      
+            in.close(); 
+            file.close();
+            return appList;
+        } catch (IOException ioe) {
+			System.out.println("IOException: " + ioe);
+        } catch (ClassNotFoundException cnfe) {
+        	cnfe.printStackTrace();
+        }
+		return appList; 
+	}
+	
+	/*This method just converts the application's applicant into the customer's username for creating
+	*a new bank account.
+	*/
+	public static Customer retrieveCustomer(String userName) {
+		ArrayList<Customer> masterCustList = BankLib.readCustomersFromFile();
+		for (Customer customer : masterCustList) {
+			if (userName == customer.getUserName()) {
+				Customer currentCustomer = customer;
+				return currentCustomer;
+			}
+			return null;
+		}
+		return null;
+	}
+	
+	public static BankAccounts retrieveAccount(String userName) {
+		ArrayList<BankAccounts> bankList = readBankAccountFromFile();
+		for (BankAccounts bankaccount : bankList) {
+			if (userName == bankaccount.Accessor) {
+				BankAccounts currentAccount = bankaccount;
+				return currentAccount;
+			}
+			return null;
+		}
+		return null;
+	}
+	
+	public void createNewAccount(Customer customer) {
+		
+		Double balance = 0.0;
+		Random rand = new Random();
+		int minimum = 1000;
+		int randRange = 9999 - minimum + 1;
+		int accountNumber = rand.nextInt(randRange) + minimum;
+		String Accessor = customer.getUserName();
+		String jointAccessor = "";
+		int PIN = BankLib.pinGenerator();
+		BankAccounts bankaccount = new BankAccounts(balance, accountNumber, PIN, Accessor);
+		bankList.add(bankaccount);
+		writeBankAccountToFile(bankList);
+		
+	}
+	
+	public static void writeBankAccountToFile(ArrayList<BankAccounts> bankaccount) {
+		try {
+			FileOutputStream fileOut = new FileOutputStream("bankaccounts.txt");
+			ObjectOutputStream out = new ObjectOutputStream(fileOut);
+			out.writeObject(bankList);
+			out.close();
+		} catch (FileNotFoundException fnfe) {
+			System.out.println("FileNotFoundException: " + fnfe);
+		} catch (IOException ioe) {
+			System.out.println("IOException: " + ioe);
+			ioe.printStackTrace();
+		}
+	}
+	
+	public static ArrayList<BankAccounts> readBankAccountFromFile() {
+		ArrayList<BankAccounts> bankList = new ArrayList<BankAccounts>();
+		Double balance = 0.0;
+		int accountNumber = 1234;
+		int PIN = 1234;
+		String Accessor = "admin";
+		
+		try
+        {    
+            FileInputStream file = new FileInputStream("bankaccounts.txt"); 
+            ObjectInputStream in = new ObjectInputStream(file); 
+            bankList = (ArrayList<BankAccounts>) in.readObject();      
+            in.close(); 
+            file.close();
+            return bankList;
+        } catch (EOFException eofe) {
+        	BankAccounts bankaccount = new BankAccounts(balance, accountNumber, PIN, Accessor);
+        	bankList.add(bankaccount);
+        	writeBankAccountToFile(bankList);
+        	Prompts.initialPrompt();
+        } catch (IOException ioe) {
+			System.out.println("IOException: " + ioe);
+        } catch (ClassNotFoundException cnfe) {
+        	cnfe.printStackTrace();
+        }
+		return bankList; 
+	}
+}

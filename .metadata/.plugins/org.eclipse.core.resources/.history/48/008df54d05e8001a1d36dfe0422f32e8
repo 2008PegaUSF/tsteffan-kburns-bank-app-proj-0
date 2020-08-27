@@ -1,0 +1,46 @@
+package bank;
+
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.util.ArrayList;
+import java.util.Random;
+
+public class AccountCreation {
+	
+	public void applyForNewAccount(Customer customer) {
+		
+	}
+	
+	public void createNewAccount(Customer customer) {
+		
+		Double balance = 0.0;
+		Random rand = new Random();
+		int minimum = 1000;
+		int randRange = 9999 - minimum + 1;
+		int accountNumber = rand.nextInt(randRange) + minimum;
+		String Accessor = customer.getUserName();
+		String jointAccessor = "";
+		int PIN = BankLib.pinGenerator();
+		BankAccounts bankaccount = new BankAccounts(balance, accountNumber, PIN, Accessor, jointAccessor);
+		bankList.add(bankaccount);
+		writeBankAccountToFile(bankList);
+		
+	}
+	
+	public void writeBankAccountToFile(ArrayList<BankAccounts> bankaccount) {
+		try {
+			FileOutputStream fileOut = new FileOutputStream("bankaccounts.txt");
+			ObjectOutputStream out = new ObjectOutputStream(fileOut);
+			out.writeObject(bankList);
+			out.close();
+		} catch (FileNotFoundException fnfe) {
+			System.out.println("FileNotFoundException: " + fnfe);
+		} catch (IOException ioe) {
+			System.out.println("IOException: " + ioe);
+			ioe.printStackTrace();
+		}
+	}
+}
+}
